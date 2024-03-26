@@ -11,7 +11,7 @@ fn main() {
       std::process::exit(0);
     },
     Err(err) => {
-      eprintln!("Error: {}", err);
+      println!("\nError: {}", err);
       std::process::exit(1);
     }
   }
@@ -20,13 +20,23 @@ fn main() {
 fn run_main(param: ApplicationParam) -> Result<(), Error> {
   return match (&param.text, &param.file, param.decode) {
     (Some(text), None, false) => {
-      encode_text(text, param.lower)
+      encode_byte(text.as_bytes(), param.lower)
+    },
+    (None, None, false) => {
+      let mut buffer = Vec::with_capacity(BYTE_BUFFER_SIZE);
+      std::io::stdin().read_to_end(&mut buffer)?;
+      encode_byte(buffer.as_slice(), param.lower)
     },
     (None, Some(file), false) => {
       encode_file(file, param.lower)
     },
     (Some(text), None, true) => {
-      decode_text(text)
+      decode_byte(text.as_bytes())
+    },
+    (None, None, true) => {
+      let mut buffer = Vec::with_capacity(BYTE_BUFFER_SIZE);
+      std::io::stdin().read_to_end(&mut buffer)?;
+      decode_byte(buffer.as_slice())
     },
     (None, Some(file), true) => {
       decode_file(file)
@@ -40,14 +50,14 @@ fn run_main(param: ApplicationParam) -> Result<(), Error> {
 const BYTE_BUFFER_SIZE: usize = 4096;
 const HEX_BUFFER_SIZE: usize = BYTE_BUFFER_SIZE * 2;
 
-fn encode_text(text: &str, lower: bool) -> Result<(), Error> {
-  let capacity = if text.len() <= BYTE_BUFFER_SIZE { text.len() * 2 } else { HEX_BUFFER_SIZE };
+fn encode_byte(bytes: &[u8], lower: bool) -> Result<(), Error> {
+  let capacity = if bytes.len() <= BYTE_BUFFER_SIZE { bytes.len() * 2 } else { HEX_BUFFER_SIZE };
   let mut res = String::with_capacity(capacity);
-  if text.len() < 2048 {
-    hex_encode(text.as_bytes(), &mut res, lower);
+  if bytes.len() < 2048 {
+    hex_encode(bytes, &mut res, lower);
     print!("{}", res);
   } else {
-    for chunk in text.as_bytes().chunks(BYTE_BUFFER_SIZE) {
+    for chunk in bytes.chunks(BYTE_BUFFER_SIZE) {
       res.truncate(0);
       hex_encode(chunk, &mut res, lower);
       print!("{}", res);
@@ -80,15 +90,15 @@ fn encode_file(file: &str, lower: bool) -> Result<(), Error> {
   return Ok(());
 }
 
-fn decode_text(text: &str) -> Result<(), Error> {
-  let capacity = if text.len() <= HEX_BUFFER_SIZE { text.len() / 2 } else { HEX_BUFFER_SIZE };
+fn decode_byte(bytes: &[u8]) -> Result<(), Error> {
+  let capacity = if bytes.len() <= HEX_BUFFER_SIZE { bytes.len() / 2 } else { HEX_BUFFER_SIZE };
   let mut res = Vec::with_capacity(capacity);
   let mut writer = std::io::stdout();
-  if text.len() <= HEX_BUFFER_SIZE {
-    hex_decode(text.as_bytes(), &mut res)?;
+  if bytes.len() <= HEX_BUFFER_SIZE {
+    hex_decode(bytes, &mut res)?;
     writer.write(res.as_slice())?;
   } else {
-    for chunk in text.as_bytes().chunks(HEX_BUFFER_SIZE) {
+    for chunk in bytes.chunks(HEX_BUFFER_SIZE) {
       res.truncate(0);
       hex_decode(chunk, &mut res)?;
       writer.write(res.as_slice())?;
@@ -168,7 +178,7 @@ fn hex_value(byte: u8) -> Result<u8, Error> {
 }
 
 #[derive(Parser, Debug)]
-#[command(arg_required_else_help = true)]
+// #[command(arg_required_else_help = true)]
 struct ApplicationParam {
 
   #[arg(short, long, help = "read in text mode (default)")]
