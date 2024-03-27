@@ -13,7 +13,7 @@ fn main() {
     },
     Err(err) => {
       let _ = std::io::stdout().flush();
-      eprintln!("\n{}{}", "Error: ".bright_red() ,err);
+      eprintln!("\n{}{}", "Error: ".bright_red(), err);
       std::process::exit(1);
     }
   }
