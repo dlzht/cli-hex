@@ -3,6 +3,7 @@ extern crate core;
 use std::io::{Read, Write};
 use anyhow::{anyhow, Error};
 use clap::Parser;
+use colored::Colorize;
 
 fn main() {
   let param = ApplicationParam::parse();
@@ -11,7 +12,8 @@ fn main() {
       std::process::exit(0);
     },
     Err(err) => {
-      println!("\nError: {}", err);
+      let _ = std::io::stdout().flush();
+      eprintln!("\n{}{}", "Error: ".bright_red() ,err);
       std::process::exit(1);
     }
   }
@@ -154,6 +156,9 @@ fn hex_encode(bytes: &[u8], res: &mut String, lower: bool) {
 
 fn hex_decode(bytes: &[u8], res: &mut Vec<u8>) -> Result<(), Error> {
   for chunk in bytes.chunks(2) {
+    if chunk.len() != 2 {
+      return Err(anyhow!("Illegal hex group: ({}, _)", chunk[0] as char))
+    }
     let byte = (hex_value(chunk[0])? << 4) | (hex_value(chunk[1])?);
     res.push(byte);
   }
